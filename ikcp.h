@@ -301,6 +301,7 @@ struct IKCPCB
 	int nocwnd, stream;
 	int logmask;
 	int (*output)(const char *buf, int len, struct IKCPCB *kcp, void *user);
+	void (*recv)(const char *buf, int len, struct IKCPCB *kcp, void *user);
 	void (*writelog)(const char *log, struct IKCPCB *kcp, void *user);
 };
 
@@ -339,6 +340,9 @@ void ikcp_release(ikcpcb *kcp);
 // set output callback, which will be invoked by kcp
 void ikcp_setoutput(ikcpcb *kcp, int (*output)(const char *buf, int len, 
 	ikcpcb *kcp, void *user));
+
+void ikcp_setrecv(ikcpcb *kcp, int (*recv)(const char *buf, int len,
+        ikcpcb *kcp, void *user));
 
 // user/upper level recv: returns size, returns below zero for EAGAIN
 int ikcp_recv(ikcpcb *kcp, char *buffer, int len);

@@ -287,6 +287,7 @@ ikcpcb* ikcp_create(IUINT32 conv, void *user)
 	kcp->xmit = 0;
 	kcp->dead_link = IKCP_DEADLINK;
 	kcp->output = NULL;
+	kcp->recv = NULL;
 	kcp->writelog = NULL;
 
 	return kcp;
@@ -347,6 +348,12 @@ void ikcp_setoutput(ikcpcb *kcp, int (*output)(const char *buf, int len,
 	ikcpcb *kcp, void *user))
 {
 	kcp->output = output;
+}
+
+void ikcp_setrecv(ikcpcb *kcp, void (*recv)(const char *buf, int len,
+        ikcpcb *kcp, void *user))
+{
+        kcp->recv = recv;
 }
 
 
@@ -876,6 +883,11 @@ int ikcp_input(ikcpcb *kcp, const char *data, long size)
 		}
 	}
 
+	char buf[2048];
+	int recv_size = ikcp_recv(kcp, buf, sizeof(buf));
+	if (recv_size > 0 && kcp->recv != NULL) {
+		kcp->recv(buf, recv_size, kcp, kcp->user);
+	}
 	return 0;
 }
 
