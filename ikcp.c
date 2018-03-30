@@ -538,6 +538,10 @@ int ikcp_send(ikcpcb *kcp, const char *buffer, int len)
 		len -= size;
 	}
 
+	if (kcp->nodelay) {
+		ikcp_flush(kcp);
+	}
+
 	return 0;
 }
 
@@ -883,11 +887,14 @@ int ikcp_input(ikcpcb *kcp, const char *data, long size)
 		}
 	}
 
-	char buf[2048];
-	int recv_size = ikcp_recv(kcp, buf, sizeof(buf));
-	if (recv_size > 0 && kcp->recv != NULL) {
-		kcp->recv(buf, recv_size, kcp, kcp->user);
+	if (kcp->recv != NULL) {
+		char buf[2048];
+		int recv_size = ikcp_recv(kcp, buf, sizeof(buf));
+		if (recv_size > 0 && kcp->recv != NULL) {
+			kcp->recv(buf, recv_size, kcp, kcp->user);
+		}
 	}
+	
 	return 0;
 }
 
@@ -934,7 +941,7 @@ void ikcp_flush(ikcpcb *kcp)
 	IKCPSEG seg;
 
 	// 'ikcp_update' haven't been called. 
-	if (kcp->updated == 0) return;
+	if (!kcp->nodelay && kcp->updated == 0) return;
 
 	seg.conv = kcp->conv;
 	seg.cmd = IKCP_CMD_ACK;
@@ -1282,5 +1289,6 @@ IUINT32 ikcp_getconv(const void *ptr)
 	ikcp_decode32u((const char*)ptr, &conv);
 	return conv;
 }
+
 
 
