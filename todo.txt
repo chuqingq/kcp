@@ -1,0 +1,37 @@
+kcpp设计
+    服务器基于一个udp socket，收到消息后先判断gMap中是否有这个conv，如果没有则创建，然后把调用ikcp_input(*kcp, data)
+    如果收到这个包就完整了，则可以直接回调onRecv(*kcp, data)，避免再等一个周期
+    服务器需要定时调用ikcp_update()，其中根据状态做重发。这个需要优化成全局kcp_update()
+    服务器需要发送时调用ikcp_send()，其实只是把消息拼接起来，未真正发出。
+kcp的优势
+    1、自动分包、组包
+    2、自动超时重传
+libuv+kcp的使用流程
+    1、udp_sock = uv_udp_init(alloc_cb, recv_cb) recv_cb->根据conv找到对应的kcp调用ikcp_input，然后调用peeksize、on_recv
+        所以on_recv需要提前注册到kcp中，或者注册到user中。
+        用on_recv还有一个好处，收到包了可以自动回调，否则如果业务不收，会导致越攒越多，最后丢包。on_recv可以保证端云协商的window一致，必然回调
+    2、kcp = kcp_new()
+    3、kcp_send(kcp, buf, len)->uv_udp_send(udp_sock, buf, len, send_cb)
+    4、注册timer_repeat，每10ms调用ikcp_all_update，会调用所有kcp的ikcp_update
+    4、uv_run()
+        当udp可写时，会发送第三步注册的消息
+        当upd可读时，会调用第一步注册的recv_cb，转给对应的ikcp_input
+        定时器到时，触发堆中的kcp_update，进行重发
+kcp改造
+    kcp增加实现两个接口：
+        // void ikcp_setallocrecv(ikcpcb *kcp, char *(*allocrecv)(const char *buf, int len, ikcpcb *kcp, void *user))
+        // ikcp_input_all() 业务不区分所属那个kcp，由kcp内部根据conv区分
+        void ikcp_update_all() 针对已到时的kcp执行ikcp_update()
+            ikcp_create()时加入到堆中
+            ikcp_update()时从堆中取出、处理、放回
+            ikcp_release()时从堆里删除
+        void ikcp_send_all() 当output可用时，libuv回调
+        可以不增加ikcp_setrecv()：因为在ikcp_input()后，业务可以自己ikcp_peeksize()，然后ikcp_recv()。
+            问题1：业务不知道消息全不全
+            问题：kcp会一直保存接收到的消息吗
+            问题2：业务如果一直不调用ikcp_recv()，kcp会一直再队列中增加segment吗？
+            问题：发端什么时候发完、成功，需要释放kcp？从现状看，如果没有服务器，kcp会不停重试
+demo
+            基于libuv+udp通信
+            100个kcp，每个kcp从1B、2B、3B到4KB，云侧就是echo服务。
+            验证从开始发，到发完的时间
