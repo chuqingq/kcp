@@ -4,19 +4,20 @@
 // #include <uv.h>
 
 const int CONV = 0x01;
+char msg[] = "123";
+const int MSG_LEN = 3;
 
 ikcpcb *kcp1 = NULL;
 ikcpcb *kcp2 = NULL;
 
-int count = 3;
+int count = 1000;
 
 // 底层发送函数
 static int on_output(const char *buf, int len, ikcpcb *kcp, void *user)
 {
-    printf("output\n");
     ikcpcb *dst_kcp = (kcp == kcp1) ? kcp2 : kcp1;
     if (kcp == kcp1 && --count == 0) {
-        printf("end\n");
+        printf("success\n");
         exit(0);
     }
     return ikcp_input(dst_kcp, buf, len);
@@ -25,8 +26,14 @@ static int on_output(const char *buf, int len, ikcpcb *kcp, void *user)
 // 上层接收函数
 static void on_recv(const char *buf, int len, ikcpcb *kcp, void *user)
 {
-    ikcpcb *dst_kcp = (kcp == kcp1) ? kcp2 : kcp1;
-    ikcp_send(dst_kcp, buf, len);
+    if (len != MSG_LEN) {
+        printf("on_recv len invalid: %d\n", len);
+    }
+    // ikcpcb *dst_kcp = (kcp == kcp1) ? kcp2 : kcp1;
+    int ret = ikcp_send(kcp, buf, len);
+    if (ret != MSG_LEN) {
+        printf("on_recv ikcp_send error: %d, count: %d\n", ret, count);
+    }
 }
 
 int main() {
@@ -40,7 +47,7 @@ int main() {
     ikcp_setoutput(kcp2, on_output);
     ikcp_setrecv(kcp2, on_recv);
 
-    ikcp_send(kcp1, "123", 3);
+    ikcp_send(kcp1, msg, MSG_LEN);
 
     ikcp_release(kcp1);
     ikcp_release(kcp2);

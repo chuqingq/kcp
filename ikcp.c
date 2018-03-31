@@ -887,8 +887,8 @@ int ikcp_input(ikcpcb *kcp, const char *data, long size)
 		}
 	}
 
-	if (kcp->recv != NULL) {
-		char buf[2048];
+	if (kcp->nodelay && kcp->recv != NULL) {
+		char buf[2048]; // TODO
 		int recv_size = ikcp_recv(kcp, buf, sizeof(buf));
 		if (recv_size > 0 && kcp->recv != NULL) {
 			kcp->recv(buf, recv_size, kcp, kcp->user);
