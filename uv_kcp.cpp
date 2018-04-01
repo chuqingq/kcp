@@ -59,6 +59,7 @@ static void client_recv_cb(uv_udp_t* handle,
             printf("success\n");
             return;
         };
+        printf("client ikcp_send len:%d\n", len);
         assert(0 == ikcp_send(kcp, client_buf, len));
     }
 }
@@ -110,6 +111,7 @@ void client() {
         client_kcps[i] = ikcp_create(i, NULL);
         ikcp_nodelay(client_kcps[i], 1, 10, 2, 1);
         ikcp_setoutput(client_kcps[i], client_kcp_output);
+        printf("client ikcp_send len: %d\n", client_msg_len);
         assert(0 == ikcp_send(client_kcps[i], client_msg, client_msg_len));
 
         // client_queue.push(client_kcps[i]);
@@ -173,7 +175,7 @@ static void server_recv_cb(uv_udp_t* handle,
     ikcp_input(kcp, rcvbuf->base, nread);
     int len = ikcp_recv(kcp, server_buf, sizeof(client_msg));
     if (len > 0) {
-        printf("server_recv_cb ikcp_recv success: len: %d\n", len);
+        printf("server ikcp_send: len: %d\n", len);
         int ret = ikcp_send(kcp, server_buf, len);
         printf("server_recv_cb ikcp_send ret: %d\n", ret);
     }
