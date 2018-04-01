@@ -66,6 +66,7 @@ static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     uv_udp_send_t *req = (uv_udp_send_t *)malloc(sizeof(*req));
     uv_buf_t uv_buf = uv_buf_init((char *)buf, len);
     uv_udp_send(req, &client_udp, &uv_buf, 1, (const struct sockaddr*) &server_addr, client_udp_send_cb);
+    return 0;
 }
 
 static void kcp_all_update(uv_timer_t *handle) {
@@ -99,6 +100,7 @@ void client() {
     for (int i = 0; i < client_kcp_count; ++i)
     {
         client_kcps[i] = ikcp_create(i, NULL);
+        ikcp_nodelay(client_kcps[i], 1, 10, 2, 1);
         ikcp_setoutput(client_kcps[i], kcp_output);
         assert(0 == ikcp_send(client_kcps[i], client_msg, i));
 
