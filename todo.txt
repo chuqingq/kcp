@@ -35,3 +35,5 @@ demo
             基于libuv+udp通信
             100个kcp，每个kcp从1B、2B、3B到4KB，云侧就是echo服务。
             验证从开始发，到发完的时间
+            TODO valgrind跑还有内存泄露，需要在测试完把所有的kcp都释放掉，并且停掉两个线程。
+
